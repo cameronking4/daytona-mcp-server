@@ -513,7 +513,7 @@ const handler = createMcpHandler(
       "Create a new sandbox with customizable parameters",
       {
         snapshot: z.string({
-          description: "The ID or name of the snapshot used for the sandbox"
+          description: "The ID or name of the snapshot used for the sandbox. Default is 'daytonaio/sandbox:0.3.0'"
         }),
         user: z.string({
           description: "The user associated with the project"
@@ -927,6 +927,272 @@ const handler = createMcpHandler(
           return formatResponse(`Volume ${volumeId} Deleted`, response.data || "Volume has been marked for deletion");
         } catch (error) {
           return handleApiError(error, `Failed to delete volume ${volumeId}`);
+        }
+      }
+    );
+
+    // ==================== SANDBOX COMMAND EXECUTION ====================
+    
+    server.tool(
+      "executeCommand",
+      "Execute a command synchronously in a sandbox",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        command: z.string({
+          description: "The command to execute"
+        }),
+        cwd: z.string({
+          description: "Current working directory"
+        }).optional(),
+        timeout: z.number({
+          description: "Timeout in seconds, defaults to 10 seconds"
+        }).optional(),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, command, cwd, timeout, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const requestData: Record<string, any> = {
+            command,
+            cwd,
+            timeout
+          };
+          
+          // Remove undefined values
+          Object.keys(requestData).forEach(key => 
+            requestData[key] === undefined && delete requestData[key]
+          );
+          
+          const response = await daytonaClient.post(`/toolbox/${sandboxId}/toolbox/process/execute`, requestData, { headers });
+          
+          return formatResponse(`Command Executed in Sandbox ${sandboxId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to execute command in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    // ==================== SANDBOX SESSION MANAGEMENT ====================
+    
+    server.tool(
+      "listSessions",
+      "List all active sessions in a sandbox",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const response = await daytonaClient.get(`/toolbox/${sandboxId}/toolbox/process/session`, { headers });
+          
+          return formatResponse(`Sessions in Sandbox ${sandboxId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to list sessions for sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "createSession",
+      "Create a new session in a sandbox",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const response = await daytonaClient.post(`/toolbox/${sandboxId}/toolbox/process/session`, {
+            sessionId
+          }, { headers });
+          
+          return formatResponse(`Session Created in Sandbox ${sandboxId}`, response.data || `Session ${sessionId} created successfully`);
+        } catch (error) {
+          return handleApiError(error, `Failed to create session in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "getSession",
+      "Get details about a specific session",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const response = await daytonaClient.get(`/toolbox/${sandboxId}/toolbox/process/session/${sessionId}`, { headers });
+          
+          return formatResponse(`Session ${sessionId} in Sandbox ${sandboxId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to get session ${sessionId} in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "deleteSession",
+      "Delete a specific session",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const response = await daytonaClient.delete(`/toolbox/${sandboxId}/toolbox/process/session/${sessionId}`, { headers });
+          
+          return formatResponse(`Session ${sessionId} Deleted from Sandbox ${sandboxId}`, response.data || "Session deleted successfully");
+        } catch (error) {
+          return handleApiError(error, `Failed to delete session ${sessionId} in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "executeSessionCommand",
+      "Execute a command in a specific session",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        command: z.string({
+          description: "The command to execute"
+        }),
+        runAsync: z.boolean({
+          description: "Whether to execute the command asynchronously"
+        }).optional(),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, command, runAsync, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const requestData: Record<string, any> = {
+            command,
+            runAsync
+          };
+          
+          // Remove undefined values
+          Object.keys(requestData).forEach(key => 
+            requestData[key] === undefined && delete requestData[key]
+          );
+          
+          const response = await daytonaClient.post(`/toolbox/${sandboxId}/toolbox/process/session/${sessionId}/exec`, requestData, { headers });
+          
+          return formatResponse(`Command Executed in Session ${sessionId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to execute command in session ${sessionId} in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "getSessionCommand",
+      "Get details about a specific command",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        commandId: z.string({
+          description: "The ID of the command"
+        }),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, commandId, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          
+          const response = await daytonaClient.get(`/toolbox/${sandboxId}/toolbox/process/session/${sessionId}/command/${commandId}`, { headers });
+          
+          return formatResponse(`Command ${commandId} in Session ${sessionId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to get command ${commandId} in session ${sessionId} in sandbox ${sandboxId}`);
+        }
+      }
+    );
+
+    server.tool(
+      "getSessionCommandLogs",
+      "Get logs for a specific command in a session",
+      {
+        sandboxId: z.string({
+          description: "ID of the sandbox"
+        }),
+        sessionId: z.string({
+          description: "The ID of the session"
+        }),
+        commandId: z.string({
+          description: "The ID of the command"
+        }),
+        follow: z.boolean({
+          description: "Whether to follow the logs stream"
+        }).optional(),
+        organizationId: z.string({
+          description: "Organization ID (optional, uses default from API key if not provided)"
+        }).optional()
+      },
+      async ({ sandboxId, sessionId, commandId, follow, organizationId }) => {
+        try {
+          const headers: Record<string, string> = organizationId ? { "X-Daytona-Organization-ID": organizationId } : {};
+          const params: Record<string, any> = {};
+          if (follow !== undefined) params.follow = follow;
+          
+          const response = await daytonaClient.get(`/toolbox/${sandboxId}/toolbox/process/session/${sessionId}/command/${commandId}/logs`, { 
+            params,
+            headers
+          });
+          
+          return formatResponse(`Logs for Command ${commandId} in Session ${sessionId}`, response.data);
+        } catch (error) {
+          return handleApiError(error, `Failed to get logs for command ${commandId} in session ${sessionId} in sandbox ${sandboxId}`);
         }
       }
     );
