@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.53.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@vercel/mcp-adapter": "^0.10.0",
+    "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "next": "15.3.3",
     "react": "^19.0.0",
